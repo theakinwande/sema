@@ -1,0 +1,55 @@
+import { Link, useRouterState } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { getCurrentUser, getUnreadCount } from '../lib/api';
+
+export default function Navbar() {
+  const router = useRouterState();
+  const currentPath = router.location.pathname;
+  const currentUser = getCurrentUser();
+
+  const { data: unread } = useQuery({
+    queryKey: ['unread', currentUser],
+    queryFn: () => getUnreadCount(currentUser!),
+    enabled: !!currentUser,
+    refetchInterval: 5000,
+  });
+
+  return (
+    <nav className="navbar" id="main-navbar">
+      <div className="navbar-inner">
+        <Link to="/" className="navbar-brand">
+          <div className="navbar-brand-icon">💬</div>
+          <span>Sema</span>
+        </Link>
+
+        <div className="navbar-actions">
+          {currentUser ? (
+            <>
+              <Link
+                to="/inbox"
+                className={`nav-btn ${currentPath === '/inbox' ? 'active' : ''}`}
+                id="nav-inbox"
+              >
+                📥 Inbox
+                {unread && unread > 0 && (
+                  <span className="nav-btn-badge">{unread > 9 ? '9+' : unread}</span>
+                )}
+              </Link>
+              <Link
+                to="/inbox"
+                className="nav-btn nav-btn-primary"
+                id="nav-share"
+              >
+                Share Link
+              </Link>
+            </>
+          ) : (
+            <Link to="/" className="nav-btn nav-btn-primary" id="nav-get-started">
+              Get Started
+            </Link>
+          )}
+        </div>
+      </div>
+    </nav>
+  );
+}

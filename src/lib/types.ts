@@ -1,6 +1,6 @@
 export interface Message {
-  id: string;
-  recipientUsername: string;
+  _id: string;
+  recipient: string;
   content: string;
   prompt: string;
   createdAt: string;
@@ -9,11 +9,16 @@ export interface Message {
 }
 
 export interface UserProfile {
+  _id: string;
   username: string;
   displayName: string;
   activePrompt: string;
   createdAt: string;
-  messageCount: number;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: UserProfile;
 }
 
 export const PROMPTS = [
@@ -28,10 +33,6 @@ export const PROMPTS = [
   'what\'s one thing you\'d change about me? 🪞',
   'ask me anything 🎤',
 ];
-
-export const generateId = (): string => {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-};
 
 export const formatTimeAgo = (dateString: string): string => {
   const now = new Date();

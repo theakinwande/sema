@@ -1,86 +1,107 @@
-import { generateId, type Message, type UserProfile } from './types';
+import type { AuthResponse, Message, UserProfile } from './types';
 
-const PROFILES_KEY = 'sema_profiles';
-const MESSAGES_KEY = 'sema_messages';
-const CURRENT_USER_KEY = 'sema_current_user';
+const TOKEN_KEY = 'sema_token';
 
-// --- Helpers ---
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function getProfiles(): Record<string, UserProfile> {
-    const stored = localStorage.getItem(PROFILES_KEY);
-    return stored ? JSON.parse(stored) : {};
+// --- Token Management ---
+export function getToken(): string | null {
+    return localStorage.getItem(TOKEN_KEY);
 }
 
-function saveProfiles(profiles: Record<string, UserProfile>): void {
-    localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
+export function setToken(token: string): void {
+    localStorage.setItem(TOKEN_KEY, token);
 }
 
-function getMessages(): Message[] {
-    const stored = localStorage.getItem(MESSAGES_KEY);
-    return stored ? JSON.parse(stored) : [];
+export function removeToken(): void {
+    localStorage.removeItem(TOKEN_KEY);
 }
 
-function saveMessages(messages: Message[]): void {
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+// --- Fetch Helper ---
+async function apiFetch<T>(
+    url: string,
+    options: RequestInit = {}
+): Promise<T> {
+    const token = getToken();
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(options.headers as Record<string, string>),
+    };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(url, {
+        ...options,
+        headers,
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data.error || 'Something went wrong');
+    }
+
+    return data as T;
 }
 
-// --- Current User ---
-export function getCurrentUser(): string | null {
-    return localStorage.getItem(CURRENT_USER_KEY);
+// --- Auth API ---
+export async function register(
+    username: string,
+    displayName: string,
+    password: string
+): Promise<AuthResponse> {
+    const data = await apiFetch<AuthResponse>('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, displayName, password }),
+    });
+    setToken(data.token);
+    return data;
 }
 
-export function setCurrentUser(username: string): void {
-    localStorage.setItem(CURRENT_USER_KEY, username);
+export async function login(
+    username: string,
+    password: string
+): Promise<AuthResponse> {
+    const data = await apiFetch<AuthResponse>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+    });
+    setToken(data.token);
+    return data;
 }
 
-export function logoutUser(): void {
-    localStorage.removeItem(CURRENT_USER_KEY);
+export async function fetchMe(): Promise<UserProfile | null> {
+    const token = getToken();
+    if (!token) return null;
+    try {
+        const data = await apiFetch<{ user: UserProfile }>('/api/auth/me');
+        return data.user;
+    } catch {
+        removeToken();
+        return null;
+    }
+}
+
+export function logout(): void {
+    removeToken();
 }
 
 // --- Profile API ---
-export async function createProfile(username: string, displayName: string): Promise<UserProfile> {
-    await delay(300);
-    const profiles = getProfiles();
-
-    const normalizedUsername = username.toLowerCase().trim();
-
-    if (profiles[normalizedUsername]) {
-        throw new Error('Username already taken');
-    }
-
-    if (!/^[a-z0-9_]{3,20}$/.test(normalizedUsername)) {
-        throw new Error('Username must be 3-20 chars, lowercase letters, numbers, and underscores only');
-    }
-
-    const profile: UserProfile = {
-        username: normalizedUsername,
-        displayName: displayName.trim() || normalizedUsername,
-        activePrompt: 'send me anonymous messages 👀',
-        createdAt: new Date().toISOString(),
-        messageCount: 0,
-    };
-
-    profiles[normalizedUsername] = profile;
-    saveProfiles(profiles);
-    setCurrentUser(normalizedUsername);
-    return profile;
-}
-
 export async function fetchProfile(username: string): Promise<UserProfile | null> {
-    await delay(200);
-    const profiles = getProfiles();
-    return profiles[username.toLowerCase()] || null;
+    try {
+        const data = await apiFetch<UserProfile>(`/api/profile/${username.toLowerCase()}`);
+        return data;
+    } catch {
+        return null;
+    }
 }
 
-export async function updatePrompt(username: string, prompt: string): Promise<UserProfile> {
-    await delay(200);
-    const profiles = getProfiles();
-    const profile = profiles[username.toLowerCase()];
-    if (!profile) throw new Error('Profile not found');
-    profile.activePrompt = prompt;
-    saveProfiles(profiles);
-    return profile;
+export async function updatePrompt(prompt: string): Promise<UserProfile> {
+    const data = await apiFetch<{ user: UserProfile }>('/api/profile/prompt', {
+        method: 'PUT',
+        body: JSON.stringify({ prompt }),
+    });
+    return data.user;
 }
 
 // --- Messages API ---
@@ -88,71 +109,35 @@ export async function sendMessage(
     recipientUsername: string,
     content: string,
     prompt: string
-): Promise<Message> {
-    await delay(400);
-
-    const profiles = getProfiles();
-    const profile = profiles[recipientUsername.toLowerCase()];
-    if (!profile) throw new Error('User not found');
-
-    const message: Message = {
-        id: generateId(),
-        recipientUsername: recipientUsername.toLowerCase(),
-        content: content.trim(),
-        prompt,
-        createdAt: new Date().toISOString(),
-        isRead: false,
-        isFavorite: false,
-    };
-
-    const messages = getMessages();
-    messages.unshift(message);
-    saveMessages(messages);
-
-    // Update message count
-    profile.messageCount += 1;
-    saveProfiles(profiles);
-
-    return message;
+): Promise<void> {
+    await apiFetch('/api/messages/' + recipientUsername.toLowerCase(), {
+        method: 'POST',
+        body: JSON.stringify({ content, prompt }),
+    });
 }
 
-export async function fetchInbox(username: string): Promise<Message[]> {
-    await delay(300);
-    const messages = getMessages();
-    return messages
-        .filter((m) => m.recipientUsername === username.toLowerCase())
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+export async function fetchInbox(): Promise<Message[]> {
+    const data = await apiFetch<{ messages: Message[] }>('/api/messages/inbox');
+    return data.messages;
+}
+
+export async function getUnreadCount(): Promise<number> {
+    const data = await apiFetch<{ count: number }>('/api/messages/unread-count');
+    return data.count;
 }
 
 export async function markAsRead(messageId: string): Promise<void> {
-    await delay(100);
-    const messages = getMessages();
-    const message = messages.find((m) => m.id === messageId);
-    if (message) {
-        message.isRead = true;
-        saveMessages(messages);
-    }
+    await apiFetch(`/api/messages/${messageId}/read`, { method: 'PATCH' });
 }
 
 export async function toggleFavorite(messageId: string): Promise<Message> {
-    await delay(100);
-    const messages = getMessages();
-    const message = messages.find((m) => m.id === messageId);
-    if (!message) throw new Error('Message not found');
-    message.isFavorite = !message.isFavorite;
-    saveMessages(messages);
-    return message;
+    const data = await apiFetch<{ message: Message }>(
+        `/api/messages/${messageId}/favorite`,
+        { method: 'PATCH' }
+    );
+    return data.message;
 }
 
 export async function deleteMessage(messageId: string): Promise<void> {
-    await delay(200);
-    let messages = getMessages();
-    messages = messages.filter((m) => m.id !== messageId);
-    saveMessages(messages);
-}
-
-export async function getUnreadCount(username: string): Promise<number> {
-    await delay(50);
-    const messages = getMessages();
-    return messages.filter((m) => m.recipientUsername === username.toLowerCase() && !m.isRead).length;
+    await apiFetch(`/api/messages/${messageId}`, { method: 'DELETE' });
 }

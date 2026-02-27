@@ -2,38 +2,36 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
-  getCurrentUser,
+  fetchMe,
+  getToken,
   fetchInbox,
-  fetchProfile,
   toggleFavorite,
   deleteMessage,
   markAsRead,
   updatePrompt,
-  logoutUser,
+  logout,
 } from '../lib/api';
 import { PROMPTS, formatTimeAgo } from '../lib/types';
 
 export default function Inbox() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const currentUser = getCurrentUser();
   const [tab, setTab] = useState<'all' | 'favorites'>('all');
   const [copied, setCopied] = useState(false);
 
-  // Redirect if not logged in
-  if (!currentUser) {
-    navigate({ to: '/' });
-    return null;
-  }
+  const token = getToken();
 
-  const { data: profile } = useQuery({
-    queryKey: ['profile', currentUser],
-    queryFn: () => fetchProfile(currentUser),
+  // Redirect if not logged in
+  const { data: user, isLoading: authLoading } = useQuery({
+    queryKey: ['me'],
+    queryFn: fetchMe,
+    enabled: !!token,
   });
 
   const { data: messages, isLoading } = useQuery({
-    queryKey: ['inbox', currentUser],
-    queryFn: () => fetchInbox(currentUser),
+    queryKey: ['inbox'],
+    queryFn: fetchInbox,
+    enabled: !!user,
     refetchInterval: 5000,
   });
 
@@ -44,21 +42,25 @@ export default function Inbox() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteMessage(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inbox'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inbox'] });
+      queryClient.invalidateQueries({ queryKey: ['unread'] });
+    },
   });
 
   const promptMutation = useMutation({
-    mutationFn: (prompt: string) => updatePrompt(currentUser, prompt),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profile'] }),
+    mutationFn: (prompt: string) => updatePrompt(prompt),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['me'] }),
   });
 
   const handleCopy = useCallback(() => {
-    const link = `${window.location.origin}/u/${currentUser}`;
+    if (!user) return;
+    const link = `${window.location.origin}/u/${user.username}`;
     navigator.clipboard.writeText(link).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
-  }, [currentUser]);
+  }, [user]);
 
   const handleMarkRead = useCallback(
     (id: string) => {
@@ -71,15 +73,32 @@ export default function Inbox() {
   );
 
   const handleLogout = () => {
-    logoutUser();
+    logout();
+    queryClient.clear();
     navigate({ to: '/' });
   };
+
+  // Loading / redirect states
+  if (authLoading) {
+    return (
+      <div className="page-center">
+        <div className="loading-container">
+          <div className="loading-spinner" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!token || !user) {
+    navigate({ to: '/' });
+    return null;
+  }
 
   const filteredMessages = messages?.filter((m) =>
     tab === 'favorites' ? m.isFavorite : true
   );
 
-  const shareLink = `${window.location.origin}/u/${currentUser}`;
+  const shareLink = `${window.location.origin}/u/${user.username}`;
 
   return (
     <div className="page-container">
@@ -102,7 +121,7 @@ export default function Inbox() {
           {PROMPTS.map((prompt) => (
             <button
               key={prompt}
-              className={`prompt-chip ${profile?.activePrompt === prompt ? 'active' : ''}`}
+              className={`prompt-chip ${user.activePrompt === prompt ? 'active' : ''}`}
               onClick={() => promptMutation.mutate(prompt)}
             >
               {prompt}
@@ -150,24 +169,24 @@ export default function Inbox() {
         <div className="message-list" id="message-list">
           {filteredMessages.map((msg, i) => (
             <div
-              key={msg.id}
+              key={msg._id}
               className={`message-card ${!msg.isRead ? 'unread' : ''}`}
               style={{ animationDelay: `${i * 50}ms` } as React.CSSProperties}
-              onClick={() => !msg.isRead && handleMarkRead(msg.id)}
-              id={`message-${msg.id}`}
+              onClick={() => !msg.isRead && handleMarkRead(msg._id)}
+              id={`message-${msg._id}`}
             >
               <p className="message-content">{msg.content}</p>
               <div className="message-meta">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span className="message-time">{formatTimeAgo(msg.createdAt)}</span>
-                  <span className="message-prompt-tag">{msg.prompt}</span>
+                  {msg.prompt && <span className="message-prompt-tag">{msg.prompt}</span>}
                 </div>
                 <div className="message-actions">
                   <button
                     className={`message-action-btn ${msg.isFavorite ? 'fav-active' : ''}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      favMutation.mutate(msg.id);
+                      favMutation.mutate(msg._id);
                     }}
                     title="Favorite"
                   >
@@ -177,7 +196,7 @@ export default function Inbox() {
                     className="message-action-btn delete"
                     onClick={(e) => {
                       e.stopPropagation();
-                      deleteMutation.mutate(msg.id);
+                      deleteMutation.mutate(msg._id);
                     }}
                     title="Delete"
                   >

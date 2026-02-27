@@ -14,7 +14,7 @@ export default function SendMessage() {
   });
 
   const sendMutation = useMutation({
-    mutationFn: () => sendMessage(username, content.trim(), profile!.activePrompt),
+    mutationFn: () => sendMessage(username, content.trim(), profile?.activePrompt || ''),
     onSuccess: () => {
       setSent(true);
       setContent('');
@@ -46,7 +46,11 @@ export default function SendMessage() {
           <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
             This user doesn't exist yet
           </p>
-          <Link to="/" className="landing-btn" style={{ display: 'inline-block', width: 'auto', padding: '12px 32px' }}>
+          <Link
+            to="/"
+            className="landing-btn"
+            style={{ display: 'inline-block', width: 'auto', padding: '12px 32px' }}
+          >
             Create your own Sema link
           </Link>
         </div>
@@ -60,7 +64,9 @@ export default function SendMessage() {
         <div className="sent-success">
           <div className="sent-icon">✅</div>
           <h2 className="sent-title">Message Sent!</h2>
-          <p className="sent-sub">Your anonymous message has been delivered to {profile.displayName}.</p>
+          <p className="sent-sub">
+            Your anonymous message has been delivered to {profile.displayName}.
+          </p>
 
           <button
             className="landing-btn"
@@ -100,6 +106,12 @@ export default function SendMessage() {
             maxLength={500}
             id="message-textarea"
           />
+
+          {sendMutation.isError && (
+            <p className="landing-error" style={{ marginBottom: '12px' }}>
+              {sendMutation.error.message}
+            </p>
+          )}
 
           <button
             type="submit"

@@ -1,61 +1,72 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { createProfile, getCurrentUser, setCurrentUser } from '../lib/api';
+import { register, login, fetchMe, getToken } from '../lib/api';
 import { PROMPTS } from '../lib/types';
 
 export default function Landing() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isLogin, setIsLogin] = useState(false);
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   // Check if already logged in
-  const currentUser = getCurrentUser();
-  if (currentUser) {
+  const { data: user, isLoading: checkingAuth } = useQuery({
+    queryKey: ['me'],
+    queryFn: fetchMe,
+    enabled: !!getToken(),
+  });
+
+  if (user) {
     navigate({ to: '/inbox' });
     return null;
   }
 
-  const createMutation = useMutation({
-    mutationFn: () => createProfile(username, displayName),
+  const registerMutation = useMutation({
+    mutationFn: () => register(username, displayName, password),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['me'] });
       navigate({ to: '/inbox' });
     },
-    onError: (err: Error) => {
-      setError(err.message);
-    },
+    onError: (err: Error) => setError(err.message),
   });
 
-  const handleLogin = () => {
-    const normalized = username.toLowerCase().trim();
-    if (!normalized) {
-      setError('Enter your username');
-      return;
-    }
-    // Check if profile exists in localStorage
-    const profiles = JSON.parse(localStorage.getItem('sema_profiles') || '{}');
-    if (profiles[normalized]) {
-      setCurrentUser(normalized);
+  const loginMutation = useMutation({
+    mutationFn: () => login(username, password),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['me'] });
       navigate({ to: '/inbox' });
-    } else {
-      setError('Username not found. Create an account first!');
-    }
-  };
+    },
+    onError: (err: Error) => setError(err.message),
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (isLogin) {
-      handleLogin();
+      loginMutation.mutate();
     } else {
-      createMutation.mutate();
+      registerMutation.mutate();
     }
   };
 
-  // Duplicate prompts for seamless marquee
+  const isPending = registerMutation.isPending || loginMutation.isPending;
+
+  // Scrolling marquee items
   const marqueeItems = [...PROMPTS, ...PROMPTS];
+
+  if (checkingAuth) {
+    return (
+      <div className="page-center">
+        <div className="loading-container">
+          <div className="loading-spinner" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-center">
@@ -75,9 +86,7 @@ export default function Landing() {
         <div className="marquee-wrapper">
           <div className="marquee-track">
             {marqueeItems.map((prompt, i) => (
-              <div key={i} className="marquee-item">
-                {prompt}
-              </div>
+              <div key={i} className="marquee-item">{prompt}</div>
             ))}
           </div>
         </div>
@@ -96,6 +105,7 @@ export default function Landing() {
               }}
               maxLength={20}
               id="username-input"
+              autoComplete="username"
             />
           </div>
 
@@ -111,19 +121,30 @@ export default function Landing() {
             />
           )}
 
+          <input
+            type="password"
+            className="landing-input landing-input-simple"
+            placeholder={isLogin ? 'Password' : 'Create a password (min 6 chars)'}
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError('');
+            }}
+            id="password-input"
+            autoComplete={isLogin ? 'current-password' : 'new-password'}
+          />
+
           {error && <p className="landing-error">{error}</p>}
 
           <button
             type="submit"
             className="landing-btn"
-            disabled={!username.trim() || createMutation.isPending}
+            disabled={!username.trim() || !password || isPending}
             id="landing-submit"
           >
-            {createMutation.isPending
-              ? 'Creating...'
-              : isLogin
-              ? '→ Log In'
-              : '✦ Create My Link'}
+            {isPending
+              ? isLogin ? 'Logging in...' : 'Creating...'
+              : isLogin ? '→ Log In' : '✦ Create My Link'}
           </button>
         </form>
 

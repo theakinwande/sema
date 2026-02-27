@@ -1,16 +1,22 @@
-import { Link, useRouterState } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import { getCurrentUser, getUnreadCount } from '../lib/api';
+import { Link, useRouterState } from '@tanstack/react-router';
+import { fetchMe, getToken, getUnreadCount } from '../lib/api';
 
 export default function Navbar() {
   const router = useRouterState();
   const currentPath = router.location.pathname;
-  const currentUser = getCurrentUser();
+  const token = getToken();
+
+  const { data: user } = useQuery({
+    queryKey: ['me'],
+    queryFn: fetchMe,
+    enabled: !!token,
+  });
 
   const { data: unread } = useQuery({
-    queryKey: ['unread', currentUser],
-    queryFn: () => getUnreadCount(currentUser!),
-    enabled: !!currentUser,
+    queryKey: ['unread'],
+    queryFn: getUnreadCount,
+    enabled: !!token && !!user,
     refetchInterval: 5000,
   });
 
@@ -23,7 +29,7 @@ export default function Navbar() {
         </Link>
 
         <div className="navbar-actions">
-          {currentUser ? (
+          {user ? (
             <>
               <Link
                 to="/inbox"
@@ -31,15 +37,11 @@ export default function Navbar() {
                 id="nav-inbox"
               >
                 📥 Inbox
-                {unread && unread > 0 && (
+                {unread != null && unread > 0 && (
                   <span className="nav-btn-badge">{unread > 9 ? '9+' : unread}</span>
                 )}
               </Link>
-              <Link
-                to="/inbox"
-                className="nav-btn nav-btn-primary"
-                id="nav-share"
-              >
+              <Link to="/inbox" className="nav-btn nav-btn-primary" id="nav-share">
                 Share Link
               </Link>
             </>

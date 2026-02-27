@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
   fetchMe, getToken, fetchInbox, toggleFavorite,
-  deleteMessage, markAsRead, updatePrompt, logout,
+  deleteMessage, markAsRead, updatePrompt, logout, changePassword,
 } from '../lib/api';
 import { PROMPTS, formatTimeAgo } from '../lib/types';
 
@@ -12,6 +12,11 @@ export default function Inbox() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<'all' | 'fav'>('all');
   const [copied, setCopied] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [curPw, setCurPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [pwMsg, setPwMsg] = useState('');
+  const [pwErr, setPwErr] = useState('');
   const token = getToken();
 
   const { data: user, isLoading: authLoad } = useQuery({
@@ -35,6 +40,18 @@ export default function Inbox() {
   const promptMut = useMutation({
     mutationFn: (p: string) => updatePrompt(p),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
+  });
+
+  const pwMut = useMutation({
+    mutationFn: () => changePassword(curPw, newPw),
+    onSuccess: () => {
+      setPwMsg('Password changed!');
+      setPwErr('');
+      setCurPw('');
+      setNewPw('');
+      setTimeout(() => { setPwMsg(''); setShowPw(false); }, 2000);
+    },
+    onError: (err: Error) => { setPwErr(err.message); setPwMsg(''); },
   });
 
   const handleCopy = useCallback(() => {
@@ -87,9 +104,47 @@ export default function Inbox() {
         <h1 className="inbox-title">Inbox</h1>
         <div className="inbox-meta">
           <span>{messages?.length || 0} messages</span>
+          <button className="logout-link" onClick={() => { setShowPw(!showPw); setPwMsg(''); setPwErr(''); }} id="change-pw">
+            {showPw ? 'Cancel' : 'Password'}
+          </button>
           <button className="logout-link" onClick={handleLogout} id="logout">Log out</button>
         </div>
       </div>
+
+      {showPw && (
+        <div className="pw-section">
+          <div className="form-group">
+            <input
+              type="password"
+              className="form-input"
+              placeholder="Current password"
+              value={curPw}
+              onChange={(e) => { setCurPw(e.target.value); setPwErr(''); }}
+              id="cur-pw"
+            />
+          </div>
+          <div className="form-group">
+            <input
+              type="password"
+              className="form-input"
+              placeholder="New password (min 6 chars)"
+              value={newPw}
+              onChange={(e) => { setNewPw(e.target.value); setPwErr(''); }}
+              id="new-pw"
+            />
+          </div>
+          {pwErr && <p className="form-error">{pwErr}</p>}
+          {pwMsg && <p style={{ fontSize: '13px', color: 'var(--green)', marginBottom: '8px' }}>{pwMsg}</p>}
+          <button
+            className="copy-btn"
+            onClick={() => pwMut.mutate()}
+            disabled={!curPw || !newPw || pwMut.isPending}
+            id="pw-submit"
+          >
+            {pwMut.isPending ? 'Saving...' : 'Change password'}
+          </button>
+        </div>
+      )}
 
       <div className="tabs">
         <button className={`tab ${tab === 'all' ? 'tab--on' : ''}`} onClick={() => setTab('all')}>All</button>

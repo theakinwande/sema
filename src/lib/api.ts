@@ -47,12 +47,13 @@ async function apiFetch<T>(
 // --- Auth API ---
 export async function register(
     username: string,
+    email: string,
     displayName: string,
     password: string
 ): Promise<AuthResponse> {
     const data = await apiFetch<AuthResponse>('/api/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ username, displayName, password }),
+        body: JSON.stringify({ username, email, displayName, password }),
     });
     setToken(data.token);
     return data;
@@ -84,6 +85,33 @@ export async function fetchMe(): Promise<UserProfile | null> {
 
 export function logout(): void {
     removeToken();
+}
+
+export async function changePassword(
+    currentPassword: string,
+    newPassword: string
+): Promise<{ message: string }> {
+    return apiFetch('/api/auth/change-password', {
+        method: 'PUT',
+        body: JSON.stringify({ currentPassword, newPassword }),
+    });
+}
+
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+    return apiFetch('/api/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+    });
+}
+
+export async function resetPassword(
+    token: string,
+    password: string
+): Promise<{ message: string }> {
+    return apiFetch('/api/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ token, password }),
+    });
 }
 
 // --- Profile API ---

@@ -13,6 +13,13 @@ const userSchema = new mongoose.Schema(
       maxlength: 20,
       match: /^[a-z0-9_]+$/,
     },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
     displayName: {
       type: String,
       required: true,
@@ -27,6 +34,14 @@ const userSchema = new mongoose.Schema(
     activePrompt: {
       type: String,
       default: 'send me anonymous messages 👀',
+    },
+    resetToken: {
+      type: String,
+      default: null,
+    },
+    resetTokenExpiry: {
+      type: Date,
+      default: null,
     },
   },
   { timestamps: true }
@@ -45,10 +60,12 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Remove password from JSON output
+// Remove sensitive fields from JSON output
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.resetToken;
+  delete obj.resetTokenExpiry;
   return obj;
 };
 

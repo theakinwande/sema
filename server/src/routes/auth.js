@@ -9,7 +9,49 @@ const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
 
-// POST /api/auth/register
+/**
+ * @swagger
+ * /auth/register:
+ *   post:
+ *     summary: Create a new account
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [username, password]
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 20
+ *                 example: johndoe
+ *               displayName:
+ *                 type: string
+ *                 example: John Doe
+ *               password:
+ *                 type: string
+ *                 minLength: 6
+ *                 example: mysecurepassword
+ *     responses:
+ *       201:
+ *         description: Account created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Validation error
+ *       409:
+ *         description: Username taken
+ */
 router.post('/register', async (req, res) => {
   try {
     const { username, displayName, password } = req.body;
@@ -30,7 +72,6 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Check if username exists
     const existing = await User.findOne({ username: normalized });
     if (existing) {
       return res.status(409).json({ error: 'Username already taken' });
@@ -54,7 +95,41 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// POST /api/auth/login
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Log in to existing account
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [username, password]
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: johndoe
+ *               password:
+ *                 type: string
+ *                 example: mysecurepassword
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Invalid credentials
+ */
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -85,7 +160,27 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// GET /api/auth/me — get current user
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get current authenticated user
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Not authenticated
+ */
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.userId);

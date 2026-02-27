@@ -4,7 +4,39 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-// GET /api/profile/:username — public profile
+/**
+ * @swagger
+ * /profile/{username}:
+ *   get:
+ *     summary: Get public profile
+ *     tags: [Profile]
+ *     parameters:
+ *       - in: path
+ *         name: username
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: johndoe
+ *     responses:
+ *       200:
+ *         description: Public profile data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 username:
+ *                   type: string
+ *                 displayName:
+ *                   type: string
+ *                 activePrompt:
+ *                   type: string
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *       404:
+ *         description: User not found
+ */
 router.get('/:username', async (req, res) => {
   try {
     const user = await User.findOne({
@@ -27,7 +59,40 @@ router.get('/:username', async (req, res) => {
   }
 });
 
-// PUT /api/profile/prompt — update prompt (protected)
+/**
+ * @swagger
+ * /profile/prompt:
+ *   put:
+ *     summary: Update active prompt
+ *     tags: [Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [prompt]
+ *             properties:
+ *               prompt:
+ *                 type: string
+ *                 example: tell me a secret 🤐
+ *     responses:
+ *       200:
+ *         description: Prompt updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Prompt is required
+ *       401:
+ *         description: Not authenticated
+ */
 router.put('/prompt', auth, async (req, res) => {
   try {
     const { prompt } = req.body;

@@ -21,32 +21,32 @@ export default function Navbar() {
   });
 
   return (
-    <nav className="navbar" id="main-navbar">
-      <div className="navbar-inner">
-        <Link to="/" className="navbar-brand">
-          <div className="navbar-brand-icon">💬</div>
+    <nav className="nav">
+      <div className="nav-inner">
+        <Link to="/" className="nav-brand">
+          <span className="nav-logo">💬</span>
           <span>Sema</span>
         </Link>
 
-        <div className="navbar-actions">
+        <div className="nav-right">
           {user ? (
             <>
               <Link
                 to="/inbox"
-                className={`nav-btn ${currentPath === '/inbox' ? 'active' : ''}`}
+                className={`nav-link ${currentPath === '/inbox' ? '' : ''}`}
                 id="nav-inbox"
               >
-                📥 Inbox
+                Inbox
                 {unread != null && unread > 0 && (
-                  <span className="nav-btn-badge">{unread > 9 ? '9+' : unread}</span>
+                  <span className="nav-link-badge">{unread > 9 ? '9+' : unread}</span>
                 )}
               </Link>
-              <Link to="/inbox" className="nav-btn nav-btn-primary" id="nav-share">
-                Share Link
+              <Link to="/inbox" className="nav-cta" id="nav-share">
+                Share
               </Link>
             </>
           ) : (
-            <Link to="/" className="nav-btn nav-btn-primary" id="nav-get-started">
+            <Link to="/" className="nav-cta" id="nav-start">
               Get Started
             </Link>
           )}

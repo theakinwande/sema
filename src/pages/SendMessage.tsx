@@ -13,45 +13,28 @@ export default function SendMessage() {
     queryFn: () => fetchProfile(username),
   });
 
-  const sendMutation = useMutation({
+  const sendMut = useMutation({
     mutationFn: () => sendMessage(username, content.trim(), profile?.activePrompt || ''),
-    onSuccess: () => {
-      setSent(true);
-      setContent('');
-    },
+    onSuccess: () => { setSent(true); setContent(''); },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (content.trim() && profile) {
-      sendMutation.mutate();
-    }
+    if (content.trim() && profile) sendMut.mutate();
   };
 
   if (isLoading) {
-    return (
-      <div className="page-center">
-        <div className="loading-container">
-          <div className="loading-spinner" />
-        </div>
-      </div>
-    );
+    return <div className="center-page"><div className="loader"><div className="spin" /></div></div>;
   }
 
   if (!profile) {
     return (
-      <div className="page-center">
-        <div className="not-found">
-          <div className="not-found-code">404</div>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
-            This user doesn't exist yet
-          </p>
-          <Link
-            to="/"
-            className="landing-btn"
-            style={{ display: 'inline-block', width: 'auto', padding: '12px 32px' }}
-          >
-            Create your own Sema link
+      <div className="center-page">
+        <div className="four04">
+          <div className="four04-num">404</div>
+          <p className="four04-text">This user doesn't exist</p>
+          <Link to="/" className="btn-fill" style={{ display: 'inline-block', width: 'auto', padding: '11px 28px' }}>
+            Create your own
           </Link>
         </div>
       </div>
@@ -60,27 +43,16 @@ export default function SendMessage() {
 
   if (sent) {
     return (
-      <div className="page-center">
-        <div className="sent-success">
-          <div className="sent-icon">✅</div>
-          <h2 className="sent-title">Message Sent!</h2>
-          <p className="sent-sub">
-            Your anonymous message has been delivered to {profile.displayName}.
-          </p>
-
-          <button
-            className="landing-btn"
-            style={{ maxWidth: '300px', margin: '0 auto var(--space-md)' }}
-            onClick={() => setSent(false)}
-          >
-            Send another
-          </button>
-
-          <div className="send-footer">
-            <p>Want your own anonymous messages?</p>
-            <Link to="/" className="send-footer-cta">
-              💬 Create your Sema link
-            </Link>
+      <div className="center-page">
+        <div className="sent">
+          <div className="sent-icon">✓</div>
+          <h2>Sent!</h2>
+          <p>Your anonymous message was delivered to {profile.displayName}.</p>
+          <div className="sent-actions">
+            <button className="btn-accent" style={{ width: 'auto', padding: '11px 28px' }} onClick={() => setSent(false)}>
+              Send another
+            </button>
+            <Link to="/" className="btn-outline">Create your own Sema</Link>
           </div>
         </div>
       </div>
@@ -88,46 +60,43 @@ export default function SendMessage() {
   }
 
   return (
-    <div className="page-center">
-      <div className="profile-page" style={{ width: '100%', maxWidth: 'var(--max-width)' }}>
-        <div className="profile-avatar">
-          {profile.displayName.charAt(0).toUpperCase()}
+    <div className="center-page">
+      <div className="send-page">
+        <div className="avatar">{profile.displayName.charAt(0).toUpperCase()}</div>
+        <h1>{profile.displayName}</h1>
+        <p className="send-username">@{profile.username}</p>
+        <p className="send-prompt">{profile.activePrompt}</p>
+
+        <div className="send-card">
+          <form onSubmit={handleSubmit} id="send-form">
+            <textarea
+              className="send-textarea"
+              placeholder="Type your anonymous message..."
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              maxLength={500}
+              id="message-textarea"
+            />
+
+            {sendMut.isError && (
+              <p className="form-error" style={{ marginBottom: '10px' }}>{sendMut.error.message}</p>
+            )}
+
+            <button
+              type="submit"
+              className="btn-accent"
+              disabled={!content.trim() || sendMut.isPending}
+              id="send-submit"
+            >
+              {sendMut.isPending ? 'Sending...' : 'Send anonymously'}
+            </button>
+          </form>
+          <p className="send-note">🔒 completely anonymous</p>
         </div>
-        <h1 className="profile-name">{profile.displayName}</h1>
-        <p className="profile-username">@{profile.username}</p>
-        <p className="profile-prompt">{profile.activePrompt}</p>
-
-        <form className="send-form" onSubmit={handleSubmit} id="send-form">
-          <textarea
-            className="send-textarea"
-            placeholder="Type your anonymous message..."
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            maxLength={500}
-            id="message-textarea"
-          />
-
-          {sendMutation.isError && (
-            <p className="landing-error" style={{ marginBottom: '12px' }}>
-              {sendMutation.error.message}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            className="send-btn"
-            disabled={!content.trim() || sendMutation.isPending}
-            id="send-submit"
-          >
-            {sendMutation.isPending ? 'Sending...' : '🔒 Send Anonymously'}
-          </button>
-        </form>
 
         <div className="send-footer">
-          <p>👀 Your identity is completely hidden</p>
-          <Link to="/" className="send-footer-cta">
-            💬 Create your own Sema link
-          </Link>
+          <p>Want your own anonymous messages?</p>
+          <Link to="/" className="link-pill">💬 Create your Sema</Link>
         </div>
       </div>
     </div>

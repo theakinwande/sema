@@ -9,7 +9,6 @@ import Landing from './pages/Home';
 import SendMessage from './pages/SendMessage';
 import Inbox from './pages/Inbox';
 
-// Root layout
 const rootRoute = createRootRoute({
   component: () => (
     <>
@@ -19,7 +18,6 @@ const rootRoute = createRootRoute({
   ),
 });
 
-// Routes
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
@@ -38,17 +36,10 @@ const inboxRoute = createRoute({
   component: Inbox,
 });
 
-// Route tree
-const routeTree = rootRoute.addChildren([
-  indexRoute,
-  sendRoute,
-  inboxRoute,
-]);
+const routeTree = rootRoute.addChildren([indexRoute, sendRoute, inboxRoute]);
 
-// Router
 export const router = createRouter({ routeTree });
 
-// Type safety
 declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router;

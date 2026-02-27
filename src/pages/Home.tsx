@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { register, login, fetchMe, getToken } from '../lib/api';
-import { PROMPTS } from '../lib/types';
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -13,8 +12,7 @@ export default function Landing() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  // Check if already logged in
-  const { data: user, isLoading: checkingAuth } = useQuery({
+  const { data: user, isLoading: checking } = useQuery({
     queryKey: ['me'],
     queryFn: fetchMe,
     enabled: !!getToken(),
@@ -25,7 +23,7 @@ export default function Landing() {
     return null;
   }
 
-  const registerMutation = useMutation({
+  const registerMut = useMutation({
     mutationFn: () => register(username, displayName, password),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['me'] });
@@ -34,7 +32,7 @@ export default function Landing() {
     onError: (err: Error) => setError(err.message),
   });
 
-  const loginMutation = useMutation({
+  const loginMut = useMutation({
     mutationFn: () => login(username, password),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['me'] });
@@ -46,57 +44,37 @@ export default function Landing() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (isLogin) {
-      loginMutation.mutate();
-    } else {
-      registerMutation.mutate();
-    }
+    isLogin ? loginMut.mutate() : registerMut.mutate();
   };
 
-  const isPending = registerMutation.isPending || loginMutation.isPending;
+  const pending = registerMut.isPending || loginMut.isPending;
 
-  // Scrolling marquee items
-  const marqueeItems = [...PROMPTS, ...PROMPTS];
-
-  if (checkingAuth) {
+  if (checking) {
     return (
-      <div className="page-center">
-        <div className="loading-container">
-          <div className="loading-spinner" />
-        </div>
+      <div className="center-page">
+        <div className="loader"><div className="spin" /></div>
       </div>
     );
   }
 
   return (
-    <div className="page-center">
+    <div className="center-page">
       <div className="landing">
-        <div className="landing-logo">💬</div>
+        <div className="landing-icon">💬</div>
 
-        <h1 className="landing-title">
-          Get honest.<br />
-          <span>Stay anonymous.</span>
-        </h1>
+        <h1>Get honest messages<br />from your friends</h1>
 
         <p className="landing-sub">
-          Create your personal Sema link and share it with friends.
-          Receive anonymous messages — no names, no filters.
+          Create your link, share it, and receive
+          completely anonymous messages.
         </p>
 
-        <div className="marquee-wrapper">
-          <div className="marquee-track">
-            {marqueeItems.map((prompt, i) => (
-              <div key={i} className="marquee-item">{prompt}</div>
-            ))}
-          </div>
-        </div>
-
-        <form className="landing-form" onSubmit={handleSubmit} id="landing-form">
-          <div className="input-group">
-            <span className="input-prefix">sema.link/</span>
+        <form onSubmit={handleSubmit} id="landing-form">
+          <div className="form-group">
+            <span className="form-prefix">sema.link/</span>
             <input
               type="text"
-              className="landing-input"
+              className="form-input form-input--prefixed"
               placeholder="yourname"
               value={username}
               onChange={(e) => {
@@ -110,55 +88,50 @@ export default function Landing() {
           </div>
 
           {!isLogin && (
-            <input
-              type="text"
-              className="landing-input landing-input-simple"
-              placeholder="Display name (optional)"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              maxLength={30}
-              id="display-name-input"
-            />
+            <div className="form-group">
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Display name (optional)"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                maxLength={30}
+                id="display-name-input"
+              />
+            </div>
           )}
 
-          <input
-            type="password"
-            className="landing-input landing-input-simple"
-            placeholder={isLogin ? 'Password' : 'Create a password (min 6 chars)'}
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              setError('');
-            }}
-            id="password-input"
-            autoComplete={isLogin ? 'current-password' : 'new-password'}
-          />
+          <div className="form-group">
+            <input
+              type="password"
+              className="form-input"
+              placeholder={isLogin ? 'Password' : 'Create a password'}
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(''); }}
+              id="password-input"
+              autoComplete={isLogin ? 'current-password' : 'new-password'}
+            />
+          </div>
 
-          {error && <p className="landing-error">{error}</p>}
+          {error && <p className="form-error">{error}</p>}
 
           <button
             type="submit"
-            className="landing-btn"
-            disabled={!username.trim() || !password || isPending}
+            className="btn-fill"
+            disabled={!username.trim() || !password || pending}
             id="landing-submit"
           >
-            {isPending
+            {pending
               ? isLogin ? 'Logging in...' : 'Creating...'
-              : isLogin ? '→ Log In' : '✦ Create My Link'}
+              : isLogin ? 'Log in' : 'Create my link'}
           </button>
         </form>
 
-        <p className="landing-login-link">
+        <p className="landing-toggle">
           {isLogin ? (
-            <>
-              Don't have a link?{' '}
-              <button onClick={() => { setIsLogin(false); setError(''); }}>Create one</button>
-            </>
+            <>New here? <button onClick={() => { setIsLogin(false); setError(''); }}>Create an account</button></>
           ) : (
-            <>
-              Already have a link?{' '}
-              <button onClick={() => { setIsLogin(true); setError(''); }}>Log in</button>
-            </>
+            <>Have an account? <button onClick={() => { setIsLogin(true); setError(''); }}>Log in</button></>
           )}
         </p>
       </div>

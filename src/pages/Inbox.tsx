@@ -2,205 +2,129 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
-  fetchMe,
-  getToken,
-  fetchInbox,
-  toggleFavorite,
-  deleteMessage,
-  markAsRead,
-  updatePrompt,
-  logout,
+  fetchMe, getToken, fetchInbox, toggleFavorite,
+  deleteMessage, markAsRead, updatePrompt, logout,
 } from '../lib/api';
 import { PROMPTS, formatTimeAgo } from '../lib/types';
 
 export default function Inbox() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [tab, setTab] = useState<'all' | 'favorites'>('all');
+  const qc = useQueryClient();
+  const [tab, setTab] = useState<'all' | 'fav'>('all');
   const [copied, setCopied] = useState(false);
-
   const token = getToken();
 
-  // Redirect if not logged in
-  const { data: user, isLoading: authLoading } = useQuery({
-    queryKey: ['me'],
-    queryFn: fetchMe,
-    enabled: !!token,
+  const { data: user, isLoading: authLoad } = useQuery({
+    queryKey: ['me'], queryFn: fetchMe, enabled: !!token,
   });
 
   const { data: messages, isLoading } = useQuery({
-    queryKey: ['inbox'],
-    queryFn: fetchInbox,
-    enabled: !!user,
-    refetchInterval: 5000,
+    queryKey: ['inbox'], queryFn: fetchInbox, enabled: !!user, refetchInterval: 5000,
   });
 
-  const favMutation = useMutation({
+  const favMut = useMutation({
     mutationFn: (id: string) => toggleFavorite(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inbox'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['inbox'] }),
   });
 
-  const deleteMutation = useMutation({
+  const delMut = useMutation({
     mutationFn: (id: string) => deleteMessage(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inbox'] });
-      queryClient.invalidateQueries({ queryKey: ['unread'] });
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['inbox'] }); qc.invalidateQueries({ queryKey: ['unread'] }); },
   });
 
-  const promptMutation = useMutation({
-    mutationFn: (prompt: string) => updatePrompt(prompt),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['me'] }),
+  const promptMut = useMutation({
+    mutationFn: (p: string) => updatePrompt(p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
   });
 
   const handleCopy = useCallback(() => {
     if (!user) return;
-    const link = `${window.location.origin}/u/${user.username}`;
-    navigator.clipboard.writeText(link).then(() => {
+    navigator.clipboard.writeText(`${window.location.origin}/u/${user.username}`).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
   }, [user]);
 
-  const handleMarkRead = useCallback(
-    (id: string) => {
-      markAsRead(id).then(() => {
-        queryClient.invalidateQueries({ queryKey: ['inbox'] });
-        queryClient.invalidateQueries({ queryKey: ['unread'] });
-      });
-    },
-    [queryClient]
-  );
+  const handleRead = useCallback((id: string) => {
+    markAsRead(id).then(() => {
+      qc.invalidateQueries({ queryKey: ['inbox'] });
+      qc.invalidateQueries({ queryKey: ['unread'] });
+    });
+  }, [qc]);
 
-  const handleLogout = () => {
-    logout();
-    queryClient.clear();
-    navigate({ to: '/' });
-  };
+  const handleLogout = () => { logout(); qc.clear(); navigate({ to: '/' }); };
 
-  // Loading / redirect states
-  if (authLoading) {
-    return (
-      <div className="page-center">
-        <div className="loading-container">
-          <div className="loading-spinner" />
-        </div>
-      </div>
-    );
+  if (authLoad) {
+    return <div className="page"><div className="loader"><div className="spin" /></div></div>;
   }
 
-  if (!token || !user) {
-    navigate({ to: '/' });
-    return null;
-  }
+  if (!token || !user) { navigate({ to: '/' }); return null; }
 
-  const filteredMessages = messages?.filter((m) =>
-    tab === 'favorites' ? m.isFavorite : true
-  );
-
-  const shareLink = `${window.location.origin}/u/${user.username}`;
+  const list = messages?.filter((m) => tab === 'fav' ? m.isFavorite : true);
+  const link = `${window.location.origin}/u/${user.username}`;
 
   return (
-    <div className="page-container">
-      {/* Share bar */}
-      <div className="inbox-share-bar" id="share-bar">
-        <span className="inbox-share-link">{shareLink}</span>
-        <button
-          className={`share-btn ${copied ? 'copied' : ''}`}
-          onClick={handleCopy}
-          id="copy-link-btn"
-        >
-          {copied ? '✓ Copied!' : '📋 Copy'}
+    <div className="page">
+      <div className="share-bar">
+        <span className="share-link">{link}</span>
+        <button className={`copy-btn ${copied ? 'copy-btn--done' : ''}`} onClick={handleCopy} id="copy-btn">
+          {copied ? '✓ Copied' : 'Copy link'}
         </button>
       </div>
 
-      {/* Prompt selector */}
-      <div className="prompt-section">
-        <p className="prompt-label">Your active prompt:</p>
-        <div className="prompt-selector" id="prompt-selector">
-          {PROMPTS.map((prompt) => (
-            <button
-              key={prompt}
-              className={`prompt-chip ${user.activePrompt === prompt ? 'active' : ''}`}
-              onClick={() => promptMutation.mutate(prompt)}
-            >
-              {prompt}
+      <div className="prompts">
+        <p className="prompts-label">Active prompt</p>
+        <div className="prompts-row" id="prompts">
+          {PROMPTS.map((p) => (
+            <button key={p} className={`chip ${user.activePrompt === p ? 'chip--on' : ''}`} onClick={() => promptMut.mutate(p)}>
+              {p}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Header */}
-      <div className="inbox-header">
+      <div className="inbox-top">
         <h1 className="inbox-title">Inbox</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="inbox-count">
-            {messages?.length || 0} message{messages?.length !== 1 ? 's' : ''}
-          </span>
-          <button className="nav-btn nav-btn-ghost" onClick={handleLogout} id="logout-btn">
-            Log out
-          </button>
+        <div className="inbox-meta">
+          <span>{messages?.length || 0} messages</span>
+          <button className="logout-link" onClick={handleLogout} id="logout">Log out</button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="tabs" id="inbox-tabs">
-        <button
-          className={`tab-btn ${tab === 'all' ? 'active' : ''}`}
-          onClick={() => setTab('all')}
-        >
-          All
-        </button>
-        <button
-          className={`tab-btn ${tab === 'favorites' ? 'active' : ''}`}
-          onClick={() => setTab('favorites')}
-        >
-          ⭐ Favorites
-        </button>
+      <div className="tabs">
+        <button className={`tab ${tab === 'all' ? 'tab--on' : ''}`} onClick={() => setTab('all')}>All</button>
+        <button className={`tab ${tab === 'fav' ? 'tab--on' : ''}`} onClick={() => setTab('fav')}>Favorites</button>
       </div>
 
-      {/* Messages */}
       {isLoading ? (
-        <div className="loading-container">
-          <div className="loading-spinner" />
-          <span className="loading-text">Loading messages...</span>
-        </div>
-      ) : filteredMessages && filteredMessages.length > 0 ? (
-        <div className="message-list" id="message-list">
-          {filteredMessages.map((msg, i) => (
+        <div className="loader"><div className="spin" /><span className="loader-text">Loading...</span></div>
+      ) : list && list.length > 0 ? (
+        <div className="msg-list" id="messages">
+          {list.map((m) => (
             <div
-              key={msg._id}
-              className={`message-card ${!msg.isRead ? 'unread' : ''}`}
-              style={{ animationDelay: `${i * 50}ms` } as React.CSSProperties}
-              onClick={() => !msg.isRead && handleMarkRead(msg._id)}
-              id={`message-${msg._id}`}
+              key={m._id}
+              className={`msg ${!m.isRead ? 'msg--new' : ''}`}
+              onClick={() => !m.isRead && handleRead(m._id)}
+              id={`msg-${m._id}`}
             >
-              <p className="message-content">{msg.content}</p>
-              <div className="message-meta">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="message-time">{formatTimeAgo(msg.createdAt)}</span>
-                  {msg.prompt && <span className="message-prompt-tag">{msg.prompt}</span>}
+              <p className="msg-text">{m.content}</p>
+              <div className="msg-row">
+                <div className="msg-info">
+                  <span className="msg-time">{formatTimeAgo(m.createdAt)}</span>
+                  {m.prompt && <span className="msg-tag">{m.prompt}</span>}
                 </div>
-                <div className="message-actions">
+                <div className="msg-btns">
                   <button
-                    className={`message-action-btn ${msg.isFavorite ? 'fav-active' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      favMutation.mutate(msg._id);
-                    }}
-                    title="Favorite"
+                    className={`msg-btn ${m.isFavorite ? 'msg-btn--fav' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); favMut.mutate(m._id); }}
                   >
-                    {msg.isFavorite ? '★' : '☆'}
+                    {m.isFavorite ? '★' : '☆'}
                   </button>
                   <button
-                    className="message-action-btn delete"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteMutation.mutate(msg._id);
-                    }}
-                    title="Delete"
+                    className="msg-btn msg-btn--del"
+                    onClick={(e) => { e.stopPropagation(); delMut.mutate(m._id); }}
                   >
-                    🗑
+                    ×
                   </button>
                 </div>
               </div>
@@ -208,21 +132,11 @@ export default function Inbox() {
           ))}
         </div>
       ) : (
-        <div className="empty-state">
+        <div className="empty">
           <div className="empty-icon">📭</div>
-          <p className="empty-title">
-            {tab === 'favorites' ? 'No favorites yet' : 'No messages yet'}
-          </p>
-          <p className="empty-sub">
-            {tab === 'favorites'
-              ? 'Star messages to add them here'
-              : 'Share your link with friends to start receiving anonymous messages!'}
-          </p>
-          {tab === 'all' && (
-            <button className="share-btn" onClick={handleCopy}>
-              📋 Copy your link
-            </button>
-          )}
+          <p className="empty-title">{tab === 'fav' ? 'No favorites' : 'No messages yet'}</p>
+          <p className="empty-sub">{tab === 'fav' ? 'Star messages to save them' : 'Share your link to get started'}</p>
+          {tab === 'all' && <button className="copy-btn" onClick={handleCopy}>Copy link</button>}
         </div>
       )}
     </div>

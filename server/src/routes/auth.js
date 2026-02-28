@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { sendResetEmail } = require('../services/email');
 
 const router = express.Router();
 
@@ -271,14 +272,22 @@ router.post('/forgot-password', async (req, res) => {
       user.resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
       await user.save();
 
-      // Log reset link to console (replace with email service later)
-      const resetUrl = `http://localhost:5173/reset-password?token=${rawToken}`;
-      console.log('\n========================================');
-      console.log('🔑 PASSWORD RESET LINK');
-      console.log(`   User: ${user.username} (${user.email})`);
-      console.log(`   Link: ${resetUrl}`);
-      console.log('   Expires in 1 hour');
-      console.log('========================================\n');
+      const baseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+      const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`;
+
+      // Send email
+      try {
+        await sendResetEmail(user.email, user.username, resetUrl);
+        console.log(`✉️  Reset email sent to ${user.email}`);
+      } catch (emailErr) {
+        console.error('Email send failed:', emailErr.message);
+        // Fallback: log link to console
+        console.log('\n========================================');
+        console.log('🔑 PASSWORD RESET LINK (email failed)');
+        console.log(`   User: ${user.username} (${user.email})`);
+        console.log(`   Link: ${resetUrl}`);
+        console.log('========================================\n');
+      }
     }
 
     res.json({ message: 'If an account with that email exists, you will receive reset instructions.' });

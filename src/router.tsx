@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-router';
 import Navbar from './components/Navbar';
 import Landing from './pages/Home';
+import Auth from './pages/Auth';
 import SendMessage from './pages/SendMessage';
 import Inbox from './pages/Inbox';
 import ForgotPassword from './pages/ForgotPassword';
@@ -24,6 +25,12 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: Landing,
+});
+
+const authRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/auth',
+  component: Auth,
 });
 
 const sendRoute = createRoute({
@@ -55,6 +62,7 @@ const resetRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  authRoute,
   sendRoute,
   inboxRoute,
   forgotRoute,

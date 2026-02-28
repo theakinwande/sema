@@ -1,20 +1,11 @@
-import { useState, useRef } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { register, login, fetchMe, getToken } from '../lib/api';
+import { fetchMe, getToken } from '../lib/api';
 
 export default function Landing() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const formRef = useRef<HTMLDivElement>(null);
-  const [isLogin, setIsLogin] = useState(false);
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
 
-  const { data: user, isLoading: checking } = useQuery({
+  const { data: user } = useQuery({
     queryKey: ['me'],
     queryFn: fetchMe,
     enabled: !!getToken(),
@@ -23,44 +14,6 @@ export default function Landing() {
   if (user) {
     navigate({ to: '/inbox' });
     return null;
-  }
-
-  const registerMut = useMutation({
-    mutationFn: () => register(username, email, displayName, password),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['me'] });
-      navigate({ to: '/inbox' });
-    },
-    onError: (err: Error) => setError(err.message),
-  });
-
-  const loginMut = useMutation({
-    mutationFn: () => login(username, password),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['me'] });
-      navigate({ to: '/inbox' });
-    },
-    onError: (err: Error) => setError(err.message),
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    isLogin ? loginMut.mutate() : registerMut.mutate();
-  };
-
-  const scrollToForm = () => {
-    formRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const pending = registerMut.isPending || loginMut.isPending;
-
-  if (checking) {
-    return (
-      <div className="center-page">
-        <div className="loader"><div className="spin" /></div>
-      </div>
-    );
   }
 
   return (
@@ -77,9 +30,9 @@ export default function Landing() {
             completely anonymous messages. No names, no tracking.
           </p>
           <div className="lp-hero-actions">
-            <button className="btn-fill lp-hero-cta" onClick={scrollToForm} id="hero-cta">
+            <Link to="/auth" className="btn-fill lp-hero-cta" id="hero-cta">
               Create my link
-            </button>
+            </Link>
             <a href="#how" className="lp-hero-link">See how it works ↓</a>
           </div>
         </div>
@@ -137,8 +90,8 @@ export default function Landing() {
           </div>
           <div className="lp-feature">
             <div className="lp-feature-icon">⚡</div>
-            <h3>Fast & simple</h3>
-            <p>Create your link in under 10 seconds. Simple email signup.</p>
+            <h3>Fast & secure</h3>
+            <p>Sign up in seconds with email. Password reset built in. Your account stays safe.</p>
           </div>
           <div className="lp-feature">
             <div className="lp-feature-icon">🎤</div>
@@ -148,103 +101,14 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* CTA / Auth */}
-      <section className="lp-section" id="signup" ref={formRef}>
-        <h2 className="lp-section-title">
-          {isLogin ? 'Welcome back' : 'Ready to get started?'}
-        </h2>
-        <p className="lp-section-sub">
-          {isLogin
-            ? 'Log in to check your messages'
-            : 'Create your link in seconds — completely free'}
-        </p>
-
-        <div className="lp-form-wrap">
-          <form onSubmit={handleSubmit} id="landing-form" className="lp-form">
-            <div className="form-group">
-              <span className="form-prefix">sema.link/</span>
-              <input
-                type="text"
-                className="form-input form-input--prefixed"
-                placeholder="yourname"
-                value={username}
-                onChange={(e) => {
-                  setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''));
-                  setError('');
-                }}
-                maxLength={20}
-                id="username-input"
-                autoComplete="username"
-              />
-            </div>
-
-            {!isLogin && (
-              <div className="form-group">
-                <input
-                  type="email"
-                  className="form-input"
-                  placeholder="Email address"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                  id="email-input"
-                  autoComplete="email"
-                />
-              </div>
-            )}
-
-            {!isLogin && (
-              <div className="form-group">
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Display name (optional)"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  maxLength={30}
-                  id="display-name-input"
-                />
-              </div>
-            )}
-
-            <div className="form-group">
-              <input
-                type="password"
-                className="form-input"
-                placeholder={isLogin ? 'Password' : 'Create a password'}
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                id="password-input"
-                autoComplete={isLogin ? 'current-password' : 'new-password'}
-              />
-            </div>
-
-            {error && <p className="form-error">{error}</p>}
-
-            <button
-              type="submit"
-              className="btn-fill"
-              disabled={!username.trim() || !password || (!isLogin && !email.trim()) || pending}
-              id="landing-submit"
-            >
-              {pending
-                ? isLogin ? 'Logging in...' : 'Creating...'
-                : isLogin ? 'Log in' : 'Create my link'}
-            </button>
-          </form>
-
-          <p className="landing-toggle">
-            {isLogin ? (
-              <>New here? <button onClick={() => { setIsLogin(false); setError(''); }}>Create an account</button></>
-            ) : (
-              <>Have an account? <button onClick={() => { setIsLogin(true); setError(''); }}>Log in</button></>
-            )}
-          </p>
-
-          {isLogin && (
-            <p className="landing-toggle" style={{ marginTop: '8px' }}>
-              <Link to="/forgot-password" style={{ color: 'var(--gray-2)', fontSize: '13px' }}>Forgot password?</Link>
-            </p>
-          )}
+      {/* CTA */}
+      <section className="lp-section" id="cta">
+        <div className="lp-cta-block">
+          <h2 className="lp-section-title">Ready to hear the truth?</h2>
+          <p className="lp-section-sub">Create your link in seconds — completely free</p>
+          <Link to="/auth" className="btn-fill lp-hero-cta" id="cta-btn">
+            Get started
+          </Link>
         </div>
       </section>
 

@@ -46,9 +46,14 @@ export default function Navbar() {
               </Link>
             </>
           ) : (
-            <Link to="/" className="nav-cta" id="nav-start">
-              Get Started
-            </Link>
+            <>
+              <Link to="/auth" className="nav-link" id="nav-login">
+                Log in
+              </Link>
+              <Link to="/auth" className="nav-cta" id="nav-signup">
+                Sign up
+              </Link>
+            </>
           )}
         </div>
       </div>

@@ -14,6 +14,10 @@ const messageSchema = new mongoose.Schema(
       trim: true,
       maxlength: 500,
     },
+    expiresAt: {
+      type: Date,
+      default: null,
+    },
     prompt: {
       type: String,
       default: '',
@@ -32,5 +36,8 @@ const messageSchema = new mongoose.Schema(
 
 // Index for efficient inbox queries
 messageSchema.index({ recipient: 1, createdAt: -1 });
+
+// TTL index to automatically delete expired messages
+messageSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model('Message', messageSchema);

@@ -61,11 +61,17 @@ router.post('/:username', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    await Message.create({
+    const messageData = {
       recipient: recipient._id,
       content: content.trim(),
       prompt: prompt || '',
-    });
+    };
+
+    if (recipient.isExpiringMode) {
+      messageData.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    }
+
+    await Message.create(messageData);
 
     res.status(201).json({ message: 'Sent!' });
   } catch (error) {

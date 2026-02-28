@@ -3,6 +3,7 @@ import {
   createRoute,
   createRouter,
   Outlet,
+  redirect,
 } from '@tanstack/react-router';
 import Navbar from './components/Navbar';
 import Landing from './pages/Home';
@@ -11,6 +12,12 @@ import SendMessage from './pages/SendMessage';
 import Inbox from './pages/Inbox';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import { fetchMe, getToken } from './lib/api';
+
+async function getAuthUser() {
+  if (!getToken()) return null;
+  return fetchMe();
+}
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -25,12 +32,20 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: Landing,
+  beforeLoad: async () => {
+    const user = await getAuthUser();
+    if (user) throw redirect({ to: '/inbox' });
+  },
 });
 
 const authRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/auth',
   component: Auth,
+  beforeLoad: async () => {
+    const user = await getAuthUser();
+    if (user) throw redirect({ to: '/inbox' });
+  },
 });
 
 const sendRoute = createRoute({
@@ -43,6 +58,10 @@ const inboxRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/inbox',
   component: Inbox,
+  beforeLoad: async () => {
+    const user = await getAuthUser();
+    if (!user) throw redirect({ to: '/auth' });
+  },
 });
 
 const forgotRoute = createRoute({

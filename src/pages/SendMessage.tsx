@@ -67,6 +67,12 @@ export default function SendMessage() {
         <p className="send-username">@{profile.username}</p>
         <p className="send-prompt">{profile.activePrompt}</p>
 
+        {profile.isExpiringMode && (
+          <div style={{ background: 'var(--gray-5)', padding: '8px 16px', borderRadius: '999px', fontSize: '13px', color: 'var(--gray-1)', marginBottom: '24px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <span>⏳</span> Messages disappear after 24 hours
+          </div>
+        )}
+
         <div className="send-card">
           <form onSubmit={handleSubmit} id="send-form">
             <textarea

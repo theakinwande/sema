@@ -2,10 +2,12 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
-  fetchMe, getToken, fetchInbox, toggleFavorite,
+  fetchMe, fetchInbox, toggleFavorite,
   deleteMessage, markAsRead, updatePrompt, logout, changePassword,
+  toggleExpiringMode
 } from '../lib/api';
-import { PROMPTS, formatTimeAgo, Message } from '../lib/types';
+import { PROMPTS, formatTimeAgo } from '../lib/types';
+import type { Message } from '../lib/types';
 import MessageCard from '../components/MessageCard';
 import html2canvas from 'html2canvas';
 
@@ -21,10 +23,9 @@ export default function Inbox() {
   const [pwErr, setPwErr] = useState('');
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [messageToShare, setMessageToShare] = useState<Message | null>(null);
-  const token = getToken();
 
   const { data: user, isLoading: authLoad } = useQuery({
-    queryKey: ['me'], queryFn: fetchMe, enabled: !!token,
+    queryKey: ['me'], queryFn: fetchMe,
   });
 
   const { data: messages, isLoading } = useQuery({
@@ -43,6 +44,11 @@ export default function Inbox() {
 
   const promptMut = useMutation({
     mutationFn: (p: string) => updatePrompt(p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
+  });
+
+  const expiringMut = useMutation({
+    mutationFn: (enabled: boolean) => toggleExpiringMode(enabled),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
   });
 
@@ -123,13 +129,13 @@ export default function Inbox() {
     });
   }, [qc]);
 
-  const handleLogout = () => { logout(); qc.clear(); navigate({ to: '/' }); };
+  const handleLogout = () => { logout(); qc.clear(); navigate({ to: '/auth' }); };
 
   if (authLoad) {
     return <div className="page"><div className="loader"><div className="spin" /></div></div>;
   }
 
-  if (!token || !user) { navigate({ to: '/' }); return null; }
+  if (!user) return null;
 
   const list = messages?.filter((m) => tab === 'fav' ? m.isFavorite : true);
   const link = `${window.location.origin}/u/${user.username}`;
@@ -154,7 +160,25 @@ export default function Inbox() {
         </div>
       </div>
 
-      <div className="inbox-top">
+      <div className="prompts" style={{ marginTop: '24px' }}>
+        <p className="prompts-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 }}>
+          <span>⏳ 24h Expiring Mode</span>
+          <label className="toggle-switch">
+            <input 
+              type="checkbox" 
+              checked={!!user.isExpiringMode} 
+              onChange={(e) => expiringMut.mutate(e.target.checked)} 
+              disabled={expiringMut.isPending}
+            />
+            <span className="toggle-slider"></span>
+          </label>
+        </p>
+        <p style={{ fontSize: '13px', color: 'var(--gray-2)', marginTop: '8px' }}>
+          Messages received while this is on will automatically disappear 24 hours after they are sent.
+        </p>
+      </div>
+
+      <div className="inbox-top" style={{ marginTop: '32px' }}>
         <h1 className="inbox-title">Inbox</h1>
         <div className="inbox-meta">
           <span>{messages?.length || 0} messages</span>

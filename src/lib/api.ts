@@ -132,6 +132,14 @@ export async function updatePrompt(prompt: string): Promise<UserProfile> {
     return data.user;
 }
 
+export async function toggleExpiringMode(enabled: boolean): Promise<UserProfile> {
+    const data = await apiFetch<{ user: UserProfile }>('/api/profile/expiring-mode', {
+        method: 'PUT',
+        body: JSON.stringify({ enabled }),
+    });
+    return data.user;
+}
+
 // --- Messages API ---
 export async function sendMessage(
     recipientUsername: string,

@@ -13,6 +13,7 @@ export interface UserProfile {
   username: string;
   displayName: string;
   activePrompt: string;
+  isExpiringMode?: boolean;
   createdAt: string;
 }
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { register, login, fetchMe, getToken } from '../lib/api';
+import { register, login } from '../lib/api';
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -12,17 +12,6 @@ export default function Auth() {
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-
-  const { data: user, isLoading: checking } = useQuery({
-    queryKey: ['me'],
-    queryFn: fetchMe,
-    enabled: !!getToken(),
-  });
-
-  if (user) {
-    navigate({ to: '/inbox' });
-    return null;
-  }
 
   const registerMut = useMutation({
     mutationFn: () => register(username, email, displayName, password),
@@ -45,18 +34,14 @@ export default function Auth() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    isLogin ? loginMut.mutate() : registerMut.mutate();
+    if (isLogin) {
+      loginMut.mutate();
+    } else {
+      registerMut.mutate();
+    }
   };
 
   const pending = registerMut.isPending || loginMut.isPending;
-
-  if (checking) {
-    return (
-      <div className="center-page">
-        <div className="loader"><div className="spin" /></div>
-      </div>
-    );
-  }
 
   return (
     <div className="center-page">

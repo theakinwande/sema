@@ -51,6 +51,7 @@ router.get('/:username', async (req, res) => {
       username: user.username,
       displayName: user.displayName,
       activePrompt: user.activePrompt,
+      isExpiringMode: user.isExpiringMode,
       createdAt: user.createdAt,
     });
   } catch (error) {
@@ -114,6 +115,65 @@ router.put('/prompt', auth, async (req, res) => {
     res.json({ user: user.toJSON() });
   } catch (error) {
     console.error('Update prompt error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * @swagger
+ * /profile/expiring-mode:
+ *   put:
+ *     summary: Toggle 24h expiring messages mode
+ *     tags: [Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [enabled]
+ *             properties:
+ *               enabled:
+ *                 type: boolean
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Expiring mode updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: enabled flag is required
+ *       401:
+ *         description: Not authenticated
+ */
+router.put('/expiring-mode', auth, async (req, res) => {
+  try {
+    const { enabled } = req.body;
+
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'enabled (boolean) is required' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { isExpiringMode: enabled },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ user: user.toJSON() });
+  } catch (error) {
+    console.error('Update expiring mode error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });

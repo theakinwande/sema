@@ -1,21 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
-import { fetchMe, getToken } from '../lib/api';
+import { Link } from '@tanstack/react-router';
 
 export default function Landing() {
-  const navigate = useNavigate();
-
-  const { data: user } = useQuery({
-    queryKey: ['me'],
-    queryFn: fetchMe,
-    enabled: !!getToken(),
-  });
-
-  if (user) {
-    navigate({ to: '/inbox' });
-    return null;
-  }
-
   return (
     <div className="lp">
       {/* Hero */}

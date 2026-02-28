@@ -35,6 +35,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: 'send me anonymous messages 👀',
     },
+    isExpiringMode: {
+      type: Boolean,
+      default: false,
+    },
     resetToken: {
       type: String,
       default: null,

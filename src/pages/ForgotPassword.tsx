@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { forgotPassword } from '../lib/api';
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Something went wrong';
+}
+
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
@@ -15,8 +19,8 @@ export default function ForgotPassword() {
     try {
       await forgotPassword(email.trim());
       setSent(true);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

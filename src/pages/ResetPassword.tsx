@@ -2,9 +2,17 @@ import { useState } from 'react';
 import { Link, useSearch } from '@tanstack/react-router';
 import { resetPassword } from '../lib/api';
 
+type ResetPasswordSearch = {
+  token?: string;
+};
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Something went wrong';
+}
+
 export default function ResetPassword() {
-  const search = useSearch({ from: '/reset-password' });
-  const token = (search as any).token || '';
+  const search = useSearch({ from: '/reset-password' }) as ResetPasswordSearch;
+  const token = search.token || '';
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [done, setDone] = useState(false);
@@ -24,8 +32,8 @@ export default function ResetPassword() {
     try {
       await resetPassword(token, password);
       setDone(true);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

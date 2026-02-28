@@ -5,7 +5,9 @@ import {
   fetchMe, getToken, fetchInbox, toggleFavorite,
   deleteMessage, markAsRead, updatePrompt, logout, changePassword,
 } from '../lib/api';
-import { PROMPTS, formatTimeAgo } from '../lib/types';
+import { PROMPTS, formatTimeAgo, Message } from '../lib/types';
+import MessageCard from '../components/MessageCard';
+import html2canvas from 'html2canvas';
 
 export default function Inbox() {
   const navigate = useNavigate();
@@ -17,6 +19,8 @@ export default function Inbox() {
   const [newPw, setNewPw] = useState('');
   const [pwMsg, setPwMsg] = useState('');
   const [pwErr, setPwErr] = useState('');
+  const [sharingId, setSharingId] = useState<string | null>(null);
+  const [messageToShare, setMessageToShare] = useState<Message | null>(null);
   const token = getToken();
 
   const { data: user, isLoading: authLoad } = useQuery({
@@ -61,6 +65,56 @@ export default function Inbox() {
       setTimeout(() => setCopied(false), 2000);
     });
   }, [user]);
+
+  const handleShare = async (m: Message, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (sharingId) return;
+
+    setSharingId(m._id);
+    setMessageToShare(m);
+
+    // Give React a tick to render the hidden card
+    setTimeout(async () => {
+      try {
+        const node = document.getElementById('share-card-node');
+        if (!node) throw new Error('Card node not found');
+
+        const canvas = await html2canvas(node, {
+          scale: 2, // higher quality
+          backgroundColor: '#1d1d1f',
+          logging: false,
+        });
+
+        const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/png'));
+        if (!blob) throw new Error('Canvas to Blob failed');
+
+        const file = new File([blob], `sema-${m._id}.png`, { type: 'image/png' });
+
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Sema Message',
+          });
+        } else {
+          // Fallback: download
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = file.name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+      } catch (err) {
+        console.error('Share failed:', err);
+        alert('Failed to generate image. Try again.');
+      } finally {
+        setSharingId(null);
+        setMessageToShare(null);
+      }
+    }, 50);
+  };
 
   const handleRead = useCallback((id: string) => {
     markAsRead(id).then(() => {
@@ -170,6 +224,14 @@ export default function Inbox() {
                 </div>
                 <div className="msg-btns">
                   <button
+                    className="msg-btn msg-btn--share"
+                    title="Share as Image"
+                    onClick={(e) => handleShare(m, e)}
+                    disabled={sharingId === m._id}
+                  >
+                    {sharingId === m._id ? '...' : '↗'}
+                  </button>
+                  <button
                     className={`msg-btn ${m.isFavorite ? 'msg-btn--fav' : ''}`}
                     onClick={(e) => { e.stopPropagation(); favMut.mutate(m._id); }}
                   >
@@ -194,6 +256,8 @@ export default function Inbox() {
           {tab === 'all' && <button className="copy-btn" onClick={handleCopy}>Copy link</button>}
         </div>
       )}
+      {/* Hidden card renderer */}
+      <MessageCard message={messageToShare} username={user.username} />
     </div>
   );
 }

@@ -61,7 +61,7 @@ export default function Auth() {
   return (
     <div className="center-page">
       <div className="landing">
-        <div className="landing-icon">💬</div>
+        <img src="/logo-mark.svg" alt="Sema Logo" className="landing-icon" style={{ height: '48px', width: 'auto', marginBottom: '24px' }} />
         <h1>{isLogin ? 'Welcome back' : 'Create your Sema'}</h1>
         <p className="landing-sub">
           {isLogin

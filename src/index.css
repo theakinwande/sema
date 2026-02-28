@@ -60,7 +60,8 @@ input, textarea { font-family: var(--font); }
 }
 
 .nav-logo {
-  font-size: 20px;
+  height: 24px;
+  width: auto;
 }
 
 .nav-right {
@@ -598,9 +599,75 @@ input, textarea { font-family: var(--font); }
   transition: background 150ms, color 150ms;
 }
 
-.msg-btn:hover { background: var(--gray-5); color: var(--black); }
-.msg-btn--fav { color: var(--amber); }
-.msg-btn--del:hover { color: var(--red); }
+.msg-btn:hover { background: var(--gray-4); color: var(--black); }
+.msg-btn--fav:hover, .msg-btn--fav.msg-btn { color: var(--amber); }
+.msg-btn--del:hover { color: var(--red); background: #ffebee; }
+.msg-btn--share:hover { color: var(--link); background: #f0f0ff; }
+
+/* Share Card (Hidden renderer) */
+.share-card-wrap {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.share-card {
+  width: 1080px;
+  height: 1920px;
+  background: var(--black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px;
+  box-sizing: border-box;
+}
+
+.share-card-inner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.share-card-prompt {
+  font-size: 32px;
+  color: var(--gray-1);
+  margin-bottom: 40px;
+  font-weight: 500;
+}
+
+.share-card-text {
+  font-size: 72px;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.3;
+  margin-bottom: 80px;
+  word-wrap: break-word;
+  max-width: 900px;
+}
+
+.share-card-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255,255,255,0.1);
+  padding: 24px 48px;
+  border-radius: 999px;
+  color: var(--white);
+  font-size: 36px;
+  font-weight: 600;
+}
+
+.share-card-logo {
+  display: flex;
+  align-items: center;
+}
+.share-card-logo svg {
+  width: 48px; height: 48px;
+}
 
 /* Loading / Empty */
 .loader {

@@ -115,7 +115,10 @@ export default function Landing() {
       {/* Footer */}
       <footer className="lp-footer">
         <div className="lp-footer-inner">
-          <span className="lp-footer-brand">💬 Sema</span>
+          <span className="lp-footer-brand">
+            <img src="/logo-mark.svg" alt="Sema" style={{ height: '16px', width: 'auto', marginRight: '6px', verticalAlign: 'middle', position: 'relative', top: '-1px' }} />
+            Sema
+          </span>
           <span className="lp-footer-copy">Get honest. Stay anonymous.</span>
         </div>
       </footer>

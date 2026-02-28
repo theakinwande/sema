@@ -11,8 +11,9 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.21",
-    "@tanstack/react-router": "^1.163.2",
-    "react": "^19.2.0",
+    "@tanstack/react-router": "^1.99.11",
+    "html2canvas": "^1.4.1",
+    "react": "^18.3.1",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {

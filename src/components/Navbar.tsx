@@ -24,7 +24,7 @@ export default function Navbar() {
     <nav className="nav">
       <div className="nav-inner">
         <Link to="/" className="nav-brand">
-          <span className="nav-logo">💬</span>
+          <img src="/logo-mark.svg" alt="Sema" className="nav-logo" />
           <span>Sema</span>
         </Link>
 
